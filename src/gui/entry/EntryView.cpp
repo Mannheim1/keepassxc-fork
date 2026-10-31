@@ -23,6 +23,7 @@
 #include <QDrag>
 #include <QGuiApplication>
 #include <QHeaderView>
+#include <QInputDialog>
 #include <QListWidget>
 #include <QMenu>
 #include <QPainter>
@@ -118,9 +119,14 @@ EntryView::EntryView(QWidget* parent)
         action->setCheckable(true);
         action->setData(logicalIndex);
         m_columnActions->addAction(action);
+        if (logicalIndex == EntryModel::CustomField) {
+            m_customFieldAction = action;
+        }
     }
     connect(m_columnActions, SIGNAL(triggered(QAction*)), this, SLOT(toggleColumnVisibility(QAction*)));
 
+    m_headerMenu->addSeparator();
+    m_headerMenu->addAction(tr("Choose custom field..."), this, SLOT(chooseCustomFieldColumn()));
     m_headerMenu->addSeparator();
     m_headerMenu->addAction(tr("Fit to window"), this, SLOT(fitColumnsToWindow()));
     m_headerMenu->addAction(tr("Fit to contents"), this, SLOT(fitColumnsToContents()));
@@ -361,8 +367,38 @@ void EntryView::showHeaderMenu(const QPoint& position)
         action->setChecked(!isColumnHidden(columnIndex));
     }
     actions[EntryModel::ParentGroup]->setVisible(inSearchMode());
+    m_customFieldAction->setText(m_model->headerData(EntryModel::CustomField, Qt::Horizontal).toString());
 
     m_headerMenu->popup(mapToGlobal(position));
+}
+
+/**
+ * Ask which custom field to show in the custom field column. Clearing the
+ * name removes the column.
+ */
+void EntryView::chooseCustomFieldColumn()
+{
+    const auto current = config()->get(Config::GUI_EntryCustomFieldColumn).toString();
+    auto names = m_model->customFieldNames();
+    names.prepend(current);
+    names.removeDuplicates();
+
+    bool ok = false;
+    const auto name = QInputDialog::getItem(this,
+                                            tr("Custom Field Column"),
+                                            tr("Field to show (leave empty to remove the column):"),
+                                            names,
+                                            0,
+                                            true,
+                                            &ok)
+                          .trimmed();
+    if (!ok) {
+        return;
+    }
+
+    config()->set(Config::GUI_EntryCustomFieldColumn, name);
+    m_customFieldAction->setChecked(!name.isEmpty());
+    toggleColumnVisibility(m_customFieldAction);
 }
 
 /**
@@ -384,6 +420,11 @@ void EntryView::toggleColumnVisibility(QAction* action)
     int columnIndex = action->data().toInt();
     if (columnIndex == EntryModel::Color) {
         m_model->setBackgroundColorVisible(!action->isChecked());
+    }
+    if (columnIndex == EntryModel::CustomField && action->isChecked()
+        && config()->get(Config::GUI_EntryCustomFieldColumn).toString().isEmpty()) {
+        chooseCustomFieldColumn();
+        return;
     }
     if (action->isChecked()) {
         header()->showSection(columnIndex);
@@ -487,6 +528,8 @@ void EntryView::resetViewToDefaults()
     header()->hideSection(EntryModel::PasswordStrength);
     header()->hideSection(EntryModel::Color);
     header()->hideSection(EntryModel::ParentGroupPath);
+    header()->hideSection(EntryModel::Tags);
+    header()->hideSection(EntryModel::CustomField);
     onHeaderChanged();
 
     // Reset column order to logical indices
@@ -520,6 +563,10 @@ void EntryView::onHeaderChanged()
     m_model->setBackgroundColorVisible(isColumnHidden(EntryModel::Color));
     // Force hide accessed column
     header()->hideSection(EntryModel::Accessed);
+    // A saved view state from before this column existed restores it as visible
+    if (config()->get(Config::GUI_EntryCustomFieldColumn).toString().isEmpty()) {
+        header()->hideSection(EntryModel::CustomField);
+    }
 }
 
 void EntryView::showEvent(QShowEvent* event)

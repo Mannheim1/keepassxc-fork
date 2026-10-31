@@ -55,6 +55,7 @@ private slots:
     void testSearch();
     void testDeleteEntry();
     void testCloneEntry();
+    void testBulkEditEntries();
     void testEntryPlaceholders();
     void testDragAndDropEntry();
     void testDragAndDropGroup();

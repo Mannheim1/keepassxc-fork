@@ -100,6 +100,7 @@ public:
         GUI_MinimizeOnClose,
         GUI_HideUsernames,
         GUI_HidePasswords,
+        GUI_EntryCustomFieldColumn,
         GUI_ColorPasswords,
         GUI_MonospaceNotes,
         GUI_ApplicationTheme,

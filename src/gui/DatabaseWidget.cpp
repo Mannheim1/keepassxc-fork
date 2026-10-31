@@ -50,6 +50,7 @@
 #include "gui/TotpExportSettingsDialog.h"
 #include "gui/TotpSetupDialog.h"
 #include "gui/dbsettings/DatabaseSettingsDialog.h"
+#include "gui/entry/BulkEditEntriesDialog.h"
 #include "gui/entry/EntryView.h"
 #include "gui/group/EditGroupWidget.h"
 #include "gui/group/GroupView.h"
@@ -581,6 +582,16 @@ void DatabaseWidget::expireSelectedEntries()
             entry->expireNow();
         }
     }
+}
+
+void DatabaseWidget::bulkEditSelectedEntries()
+{
+    auto dialog = new BulkEditEntriesDialog(m_entryView->selectedEntries(), m_db->tagList(), this);
+    dialog->setAttribute(Qt::WA_DeleteOnClose);
+    connect(this, &DatabaseWidget::databaseLockRequested, dialog, &QDialog::reject);
+    // Read the selection again on accept, the database may have been reloaded while the dialog was open
+    connect(dialog, &QDialog::accepted, this, [this, dialog] { dialog->edit().apply(m_entryView->selectedEntries()); });
+    dialog->open();
 }
 
 void DatabaseWidget::deleteSelectedEntries()

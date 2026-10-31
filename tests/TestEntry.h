@@ -46,6 +46,9 @@ private slots:
     void testMoveUpDown();
     void testPreviousParentGroup();
     void testContainsPlaceholder();
+    void testBulkEdit();
+    void testBulkEditTags();
+    void testBulkEditCustomFields();
 };
 
 #endif // KEEPASSX_TESTENTRY_H

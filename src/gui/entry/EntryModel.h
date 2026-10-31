@@ -50,7 +50,9 @@ public:
         Size = 13,
         PasswordStrength = 14,
         Color = 15,
-        ParentGroupPath = 16
+        ParentGroupPath = 16,
+        Tags = 17,
+        CustomField = 18
     };
 
     explicit EntryModel(QObject* parent = nullptr);
@@ -70,6 +72,7 @@ public:
     void setGroup(Group* group);
     void setEntries(const QList<Entry*>& entries);
     void setBackgroundColorVisible(bool visible);
+    QStringList customFieldNames() const;
 
 private slots:
     void entryAboutToAdd(Entry* entry);

@@ -57,6 +57,7 @@
 #include "gui/databasekey/PasswordEditWidget.h"
 #include "gui/dbsettings/DatabaseSettingsDialog.h"
 #include "gui/dbsettings/DatabaseSettingsWidgetEncryption.h"
+#include "gui/entry/BulkEditEntriesDialog.h"
 #include "gui/entry/EditEntryWidget.h"
 #include "gui/entry/EntryView.h"
 #include "gui/group/EditGroupWidget.h"
@@ -1481,6 +1482,65 @@ void TestGui::testDeleteEntry()
     // Go back to the root group
     clickIndex(groupView->model()->index(0, 0), groupView, Qt::LeftButton);
     QCOMPARE(groupView->currentGroup(), m_db->rootGroup());
+}
+
+void TestGui::testBulkEditEntries()
+{
+    addCannedEntries();
+
+    auto* entryView = m_dbWidget->findChild<EntryView*>("entryView");
+    auto* bulkEditAction = m_mainWindow->findChild<QAction*>("actionEntryBulkEdit");
+    entryView->setFocus();
+
+    // Bulk edit needs more than one entry
+    clickIndex(entryView->model()->index(0, 1), entryView, Qt::LeftButton);
+    QVERIFY(!bulkEditAction->isEnabled());
+
+    entryView->selectAll();
+    QApplication::processEvents();
+    QVERIFY(bulkEditAction->isEnabled());
+
+    const auto entries = entryView->selectedEntries();
+    QCOMPARE(entries.size(), entryView->model()->rowCount());
+    QStringList titles;
+    QStringList passwords;
+    for (const auto entry : entries) {
+        titles << entry->title();
+        passwords << entry->password();
+    }
+
+    triggerAction("actionEntryBulkEdit");
+    auto* dialog = m_dbWidget->findChild<BulkEditEntriesDialog*>();
+    QVERIFY(dialog);
+
+    dialog->findChild<QCheckBox*>("usernameCheck")->setChecked(true);
+    auto* usernameEdit = dialog->findChild<QLineEdit*>("usernameEdit");
+    QVERIFY(usernameEdit->isEnabled());
+    usernameEdit->setText("bulk user");
+
+    QTest::mouseClick(dialog->findChild<QPushButton*>("addFieldButton"), Qt::LeftButton);
+    auto* customFields = dialog->findChild<QTableWidget*>("customFieldsTable");
+    auto* fieldName = qobject_cast<QComboBox*>(customFields->cellWidget(0, 0));
+    customFields->item(0, 2)->setText("bulk@example.com");
+
+    // The password cannot be reached through a custom field
+    fieldName->setCurrentText("Password");
+    MessageBox::setNextAnswer(MessageBox::Ok);
+    dialog->accept();
+    QApplication::processEvents();
+    QVERIFY(dialog->isVisible());
+
+    fieldName->setCurrentText("Email");
+    dialog->accept();
+    QApplication::processEvents();
+
+    for (int i = 0; i < entries.size(); ++i) {
+        QCOMPARE(entries[i]->username(), QString("bulk user"));
+        QCOMPARE(entries[i]->attributes()->value("Email"), QString("bulk@example.com"));
+        QCOMPARE(entries[i]->title(), titles[i]);
+        QCOMPARE(entries[i]->password(), passwords[i]);
+    }
+    QVERIFY(m_db->isModified());
 }
 
 void TestGui::testCloneEntry()

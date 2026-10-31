@@ -324,6 +324,7 @@
     <addaction name="separator"/>
     <addaction name="actionEntryNew"/>
     <addaction name="actionEntryEdit"/>
+    <addaction name="actionEntryBulkEdit"/>
     <addaction name="actionEntryExpire"/>
     <addaction name="actionEntryClone"/>
     <addaction name="actionEntryDelete"/>
@@ -550,6 +551,20 @@
    </property>
    <property name="shortcut">
     <string notr="true">Ctrl+E</string>
+   </property>
+  </action>
+  <action name="actionEntryBulkEdit">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>&amp;Bulk Edit Entries…</string>
+   </property>
+   <property name="iconText">
+    <string>Bulk Edit Entries</string>
+   </property>
+   <property name="toolTip">
+    <string>Edit the selected entries together</string>
    </property>
   </action>
   <action name="actionEntryExpire">

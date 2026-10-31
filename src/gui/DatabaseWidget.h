@@ -184,6 +184,7 @@ public slots:
     void createEntry();
     void cloneEntry();
     void expireSelectedEntries();
+    void bulkEditSelectedEntries();
     void deleteSelectedEntries();
     void restoreSelectedEntries();
     void deleteEntries(QList<Entry*> entries, bool confirm = true);

@@ -20,6 +20,7 @@
 
 #include "TestEntry.h"
 #include "core/Clock.h"
+#include "core/EntryBulkEdit.h"
 #include "core/Group.h"
 #include "core/Metadata.h"
 #include "core/TimeInfo.h"
@@ -981,4 +982,109 @@ void TestEntry::testContainsPlaceholder()
             QString("{").repeated(i) + QString("REF:U@A:https://url.com/") + QString("}").repeated(i);
         QVERIFY(EntryPlaceholders::containsPlaceholder(placeholder));
     }
+}
+
+void TestEntry::testBulkEdit()
+{
+    Entry first;
+    first.setTitle("First");
+    first.setUsername("old");
+    first.setPassword("first-password");
+    first.setAutoTypeEnabled(true);
+
+    Entry second;
+    second.setTitle("Second");
+    second.setUsername("new");
+    second.setPassword("second-password");
+    second.setAutoTypeEnabled(true);
+
+    const auto expiry = QDateTime(QDate(2030, 1, 2), QTime(3, 4, 5), Qt::UTC);
+
+    EntryBulkEdit edit;
+    edit.username = QString("new");
+    edit.notes = QString("shared notes");
+    edit.expires = true;
+    edit.expiryTime = expiry;
+    edit.autoTypeEnabled = false;
+    edit.apply({&first, &second});
+
+    for (auto entry : {&first, &second}) {
+        QCOMPARE(entry->username(), QString("new"));
+        QCOMPARE(entry->notes(), QString("shared notes"));
+        QVERIFY(entry->timeInfo().expires());
+        QCOMPARE(entry->timeInfo().expiryTime(), expiry);
+        QVERIFY(!entry->autoTypeEnabled());
+        QCOMPARE(entry->historyItems().size(), 1);
+    }
+
+    // Fields that are not part of the edit stay as they were
+    QCOMPARE(first.title(), QString("First"));
+    QCOMPARE(second.title(), QString("Second"));
+    QCOMPARE(first.password(), QString("first-password"));
+    QCOMPARE(second.password(), QString("second-password"));
+
+    // The previous values are kept in history
+    QCOMPARE(first.historyItems().first()->username(), QString("old"));
+
+    // An edit that changes nothing does not add history
+    EntryBulkEdit unchanged;
+    unchanged.username = QString("new");
+    unchanged.apply({&first});
+    QCOMPARE(first.historyItems().size(), 1);
+
+    EntryBulkEdit neverExpires;
+    neverExpires.expires = false;
+    neverExpires.apply({&first});
+    QVERIFY(!first.timeInfo().expires());
+}
+
+void TestEntry::testBulkEditTags()
+{
+    Entry entry;
+    entry.setTags("one;two");
+
+    EntryBulkEdit edit;
+    edit.tags = QStringList{"three"};
+    edit.tagMode = EntryBulkEdit::TagMode::Add;
+    edit.apply({&entry});
+    QCOMPARE(entry.tagList(), QStringList({"one", "three", "two"}));
+
+    edit.tags = QStringList{"one", "absent"};
+    edit.tagMode = EntryBulkEdit::TagMode::Remove;
+    edit.apply({&entry});
+    QCOMPARE(entry.tagList(), QStringList({"three", "two"}));
+
+    edit.tags = QStringList{"only"};
+    edit.tagMode = EntryBulkEdit::TagMode::Replace;
+    edit.apply({&entry});
+    QCOMPARE(entry.tagList(), QStringList({"only"}));
+
+    edit.tags = QStringList{};
+    edit.apply({&entry});
+    QVERIFY(entry.tagList().isEmpty());
+}
+
+void TestEntry::testBulkEditCustomFields()
+{
+    Entry entry;
+    entry.attributes()->set("Secret", "hidden", true);
+    entry.attributes()->set("Obsolete", "value");
+
+    EntryBulkEdit edit;
+    edit.customFields.append({"Email", "user@example.com", false, false});
+    edit.customFields.append({"Secret", "changed", false, false});
+    edit.customFields.append({"Pin", "1234", true, false});
+    edit.customFields.append({"Obsolete", {}, false, true});
+    edit.customFields.append({"Absent", {}, false, true});
+    edit.apply({&entry});
+
+    QCOMPARE(entry.attributes()->value("Email"), QString("user@example.com"));
+    QVERIFY(!entry.attributes()->isProtected("Email"));
+    QCOMPARE(entry.attributes()->value("Secret"), QString("changed"));
+    QVERIFY(entry.attributes()->isProtected("Secret"));
+    QVERIFY(entry.attributes()->isProtected("Pin"));
+    QVERIFY(!entry.attributes()->contains("Obsolete"));
+    QVERIFY(!entry.attributes()->contains("Absent"));
+    QCOMPARE(entry.historyItems().size(), 1);
+    QVERIFY(entry.historyItems().first()->attributes()->contains("Obsolete"));
 }

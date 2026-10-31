@@ -19,8 +19,11 @@
 #include "TestEntryModel.h"
 
 #include <QSignalSpy>
+#include <QSortFilterProxyModel>
+#include <QTemporaryFile>
 #include <QTest>
 
+#include "core/Config.h"
 #include "core/Entry.h"
 #include "core/Group.h"
 #include "crypto/Crypto.h"
@@ -313,6 +316,79 @@ void TestEntryModel::testAutoTypeAssociationsModel()
     delete modelTest;
     delete model;
     delete associations;
+}
+
+void TestEntryModel::testTagsColumn()
+{
+    Group group;
+    auto entry = new Entry();
+    entry->setGroup(&group);
+    entry->setTags("beta;Alpha;gamma");
+
+    EntryModel model;
+    model.setGroup(&group);
+
+    QCOMPARE(model.data(model.index(0, EntryModel::Tags)).toString(), QString("Alpha, beta, gamma"));
+    QCOMPARE(model.headerData(EntryModel::Tags, Qt::Horizontal).toString(), QString("Tags"));
+}
+
+void TestEntryModel::testCustomFieldColumn()
+{
+    QTemporaryFile configFile;
+    QVERIFY(configFile.open());
+    Config::createConfigFromFile(configFile.fileName());
+
+    Group group;
+    auto makeEntry = [&group](const QString& email) {
+        auto entry = new Entry();
+        entry->setGroup(&group);
+        entry->attributes()->set("Email", email);
+        return entry;
+    };
+    auto zoe = makeEntry("zoe@example.com");
+    auto amy = makeEntry("amy@example.com");
+    auto reference = makeEntry(QString("{REF:U@I:%1}").arg(amy->uuidToHex()));
+    auto missing = new Entry();
+    missing->setGroup(&group);
+    auto secret = new Entry();
+    secret->setGroup(&group);
+    secret->attributes()->set("Email", "secret@example.com", true);
+
+    EntryModel model;
+    model.setGroup(&group);
+
+    auto cell = [&model](Entry* entry) {
+        return model.index(model.indexFromEntry(entry).row(), EntryModel::CustomField).data().toString();
+    };
+
+    QVERIFY(cell(zoe).isEmpty());
+    QCOMPARE(model.headerData(EntryModel::CustomField, Qt::Horizontal).toString(), QString("Custom Field"));
+
+    QSignalSpy spyHeader(&model, SIGNAL(headerDataChanged(Qt::Orientation, int, int)));
+    QSignalSpy spyData(&model, SIGNAL(dataChanged(QModelIndex, QModelIndex)));
+    config()->set(Config::GUI_EntryCustomFieldColumn, "Email");
+    QCOMPARE(spyHeader.count(), 1);
+    QCOMPARE(spyData.count(), 1);
+
+    QCOMPARE(model.headerData(EntryModel::CustomField, Qt::Horizontal).toString(), QString("Email"));
+    QCOMPARE(cell(zoe), QString("zoe@example.com"));
+    QVERIFY(cell(reference).startsWith("Ref: "));
+    QVERIFY(cell(missing).isEmpty());
+    QVERIFY(!cell(secret).contains("secret"));
+    QVERIFY(!model.index(model.indexFromEntry(secret).row(), EntryModel::CustomField)
+                 .data(Qt::UserRole)
+                 .toString()
+                 .contains("secret"));
+
+    // Sorting uses the field value, except protected values which sort by their hidden placeholder
+    secret->attributes()->remove("Email");
+    QSortFilterProxyModel proxy;
+    proxy.setSourceModel(&model);
+    proxy.setSortRole(Qt::UserRole);
+    proxy.sort(EntryModel::CustomField, Qt::DescendingOrder);
+    QCOMPARE(proxy.index(0, EntryModel::CustomField).data().toString(), QString("zoe@example.com"));
+
+    config()->set(Config::GUI_EntryCustomFieldColumn, QString());
 }
 
 void TestEntryModel::testProxyModel()

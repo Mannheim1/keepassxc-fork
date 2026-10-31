@@ -67,6 +67,7 @@ private slots:
     void emitEntryActivated(const QModelIndex& index);
     void showHeaderMenu(const QPoint& position);
     void toggleColumnVisibility(QAction* action);
+    void chooseCustomFieldColumn();
     void fitColumnsToWindow();
     void fitColumnsToContents();
     void resetViewToDefaults();
@@ -88,6 +89,7 @@ private:
 
     QMenu* m_headerMenu;
     QActionGroup* m_columnActions;
+    QAction* m_customFieldAction = nullptr;
 };
 
 #endif // KEEPASSX_ENTRYVIEW_H

@@ -117,7 +117,7 @@ int EntryModel::columnCount(const QModelIndex& parent) const
         return 0;
     }
 
-    return 17;
+    return 19;
 }
 
 QVariant EntryModel::data(const QModelIndex& index, int role) const
@@ -230,6 +230,25 @@ QVariant EntryModel::data(const QModelIndex& index, int role) const
                 resultInt /= 1024.0;
             }
 
+            return result;
+        }
+        case Tags: {
+            auto tags = entry->tagList();
+            tags.sort(Qt::CaseInsensitive);
+            return tags.join(", ");
+        }
+        case CustomField: {
+            const auto key = config()->get(Config::GUI_EntryCustomFieldColumn).toString();
+            if (!attr->contains(key)) {
+                return result;
+            }
+            if (attr->isProtected(key)) {
+                return EntryModel::HiddenContentDisplay;
+            }
+            result = entry->resolveMultiplePlaceholders(attr->value(key));
+            if (attr->isReference(key)) {
+                result.prepend(tr("Ref: ", "Reference abbreviation"));
+            }
             return result;
         }
         case Color:
@@ -396,6 +415,12 @@ QVariant EntryModel::headerData(int section, Qt::Orientation orientation, int ro
             return tr("Attachments");
         case Size:
             return tr("Size");
+        case Tags:
+            return tr("Tags");
+        case CustomField: {
+            const auto key = config()->get(Config::GUI_EntryCustomFieldColumn).toString();
+            return key.isEmpty() ? tr("Custom Field") : key;
+        }
         }
 
     } else if (role == Qt::DecorationRole) {
@@ -441,6 +466,10 @@ QVariant EntryModel::headerData(int section, Qt::Orientation orientation, int ro
             return tr("Has TOTP");
         case Color:
             return tr("Background Color");
+        case Tags:
+            return tr("Entry tags");
+        case CustomField:
+            return tr("Custom field value");
         }
     }
 
@@ -595,6 +624,10 @@ void EntryModel::onConfigChanged(Config::ConfigKey key)
     case Config::GUI_HidePasswords:
         emit dataChanged(index(0, Password), index(rowCount() - 1, Password), {Qt::DisplayRole});
         break;
+    case Config::GUI_EntryCustomFieldColumn:
+        emit headerDataChanged(Qt::Horizontal, CustomField, CustomField);
+        emit dataChanged(index(0, CustomField), index(rowCount() - 1, CustomField));
+        break;
     default:
         break;
     }
@@ -626,4 +659,17 @@ void EntryModel::makeConnections(const Group* group)
 void EntryModel::setBackgroundColorVisible(bool visible)
 {
     m_backgroundColorVisible = visible;
+}
+
+QStringList EntryModel::customFieldNames() const
+{
+    QSet<QString> names;
+    for (const auto entry : m_entries) {
+        for (const auto& key : entry->attributes()->customKeys()) {
+            names.insert(key);
+        }
+    }
+    auto result = names.values();
+    result.sort(Qt::CaseInsensitive);
+    return result;
 }

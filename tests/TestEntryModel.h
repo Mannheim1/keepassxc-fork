@@ -34,6 +34,8 @@ private slots:
     void testAutoTypeAssociationsModel();
     void testProxyModel();
     void testDatabaseDelete();
+    void testTagsColumn();
+    void testCustomFieldColumn();
 };
 
 #endif // KEEPASSX_TESTENTRYMODEL_H

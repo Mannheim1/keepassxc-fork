@@ -146,6 +146,7 @@ MainWindow::MainWindow()
     m_entryContextMenu->addSeparator();
 #endif
     m_entryContextMenu->addAction(m_ui->actionEntryEdit);
+    m_entryContextMenu->addAction(m_ui->actionEntryBulkEdit);
     m_entryContextMenu->addAction(m_ui->actionEntryExpire);
     m_entryContextMenu->addAction(m_ui->actionEntryClone);
     m_entryContextMenu->addAction(m_ui->actionEntryDelete);
@@ -351,6 +352,7 @@ MainWindow::MainWindow()
     m_ui->actionEntryNew->setIcon(icons()->icon("entry-new"));
     m_ui->actionEntryClone->setIcon(icons()->icon("entry-clone"));
     m_ui->actionEntryEdit->setIcon(icons()->icon("entry-edit"));
+    m_ui->actionEntryBulkEdit->setIcon(icons()->icon("entry-edit"));
     m_ui->actionEntryExpire->setIcon(icons()->icon("entry-expire"));
     m_ui->actionEntryDelete->setIcon(icons()->icon("entry-delete"));
     m_ui->actionEntryRestore->setIcon(icons()->icon("entry-restore"));
@@ -473,6 +475,7 @@ MainWindow::MainWindow()
 
     m_actionMultiplexer.connect(m_ui->actionEntryNew, SIGNAL(triggered()), SLOT(createEntry()));
     m_actionMultiplexer.connect(m_ui->actionEntryEdit, SIGNAL(triggered()), SLOT(switchToEntryEdit()));
+    m_actionMultiplexer.connect(m_ui->actionEntryBulkEdit, SIGNAL(triggered()), SLOT(bulkEditSelectedEntries()));
     m_actionMultiplexer.connect(m_ui->actionEntryExpire, SIGNAL(triggered()), SLOT(expireSelectedEntries()));
     m_actionMultiplexer.connect(m_ui->actionEntryClone, SIGNAL(triggered()), SLOT(cloneEntry()));
     m_actionMultiplexer.connect(m_ui->actionEntryDelete, SIGNAL(triggered()), SLOT(deleteSelectedEntries()));
@@ -892,6 +895,7 @@ void MainWindow::updateMenuActionState()
     m_ui->actionEntryNew->setEnabled(inDatabase && !inRecycleBin);
     m_ui->actionEntryClone->setEnabled(singleEntrySelected && !inRecycleBin);
     m_ui->actionEntryEdit->setEnabled(singleEntrySelected);
+    m_ui->actionEntryBulkEdit->setEnabled(multiEntrySelected && !singleEntrySelected);
     m_ui->actionEntryExpire->setEnabled(multiEntrySelected);
     m_ui->actionEntryDelete->setEnabled(multiEntrySelected);
     if (dbWidget) {

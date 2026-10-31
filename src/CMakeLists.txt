@@ -28,6 +28,7 @@ set(core_SOURCES
         core/DatabaseStats.cpp
         core/Entry.cpp
         core/EntryAttachments.cpp
+        core/EntryBulkEdit.cpp
         core/EntryAttributes.cpp
         core/EntryPlaceholders.cpp
         core/EntrySearcher.cpp
@@ -161,6 +162,7 @@ set(gui_SOURCES
         gui/entry/attachments/TextAttachmentsPreviewWidget.cpp
         gui/entry/attachments/TextAttachmentsEditWidget.cpp
         gui/entry/attachments/AttachmentWidget.cpp
+        gui/entry/BulkEditEntriesDialog.cpp
         gui/entry/EntryHistoryModel.cpp
         gui/entry/EntryModel.cpp
         gui/entry/EntryView.cpp
